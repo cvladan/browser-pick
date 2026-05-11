@@ -21,14 +21,13 @@ enum DefaultBrowserManager {
     /// macOS will show its own confirmation dialog. We can't bypass that.
     static func setAsDefault(completion: @escaping @Sendable @MainActor (Error?) -> Void) {
         let bundleURL = Bundle.main.bundleURL
-        let workspace = NSWorkspace.shared
 
-        workspace.setDefaultApplication(at: bundleURL, toOpenURLsWithScheme: "http") { httpErr in
+        NSWorkspace.shared.setDefaultApplication(at: bundleURL, toOpenURLsWithScheme: "http") { httpErr in
             if let httpErr {
                 Task { @MainActor in completion(httpErr) }
                 return
             }
-            workspace.setDefaultApplication(at: bundleURL, toOpenURLsWithScheme: "https") { httpsErr in
+            NSWorkspace.shared.setDefaultApplication(at: bundleURL, toOpenURLsWithScheme: "https") { httpsErr in
                 Task { @MainActor in completion(httpsErr) }
             }
         }

@@ -9,17 +9,15 @@ struct Browser: Identifiable, Codable, Hashable {
     var shortcut: String? // single-character keyboard shortcut, lowercase
 
     static func discoverInstalled() -> [Browser] {
-        // Find all apps registered as handlers for http://
-        let handlers = LSCopyAllHandlersForURLScheme("http" as CFString)?
-            .takeRetainedValue() as? [String] ?? []
+        guard let probeURL = URL(string: "https://example.com") else { return [] }
+        let appURLs = NSWorkspace.shared.urlsForApplications(toOpen: probeURL)
 
         let ourBundleID = Bundle.main.bundleIdentifier ?? ""
 
-        return handlers.compactMap { bundleID -> Browser? in
-            guard bundleID != ourBundleID else { return nil }
-            guard let url = NSWorkspace.shared.urlForApplication(
-                withBundleIdentifier: bundleID
-            ) else { return nil }
+        return appURLs.compactMap { url -> Browser? in
+            guard let bundle = Bundle(url: url),
+                  let bundleID = bundle.bundleIdentifier,
+                  bundleID != ourBundleID else { return nil }
 
             let name = FileManager.default
                 .displayName(atPath: url.path)
