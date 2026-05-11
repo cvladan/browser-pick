@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Cut a release: bump Info.plist, build, zip, GitHub Release, bump cask in tap.
 #
-# Usage: ./release.sh 0.0.2
+# Usage:
+#   ./release.sh           # auto-bump patch (e.g. 0.0.3 → 0.0.4)
+#   ./release.sh 0.1.0     # explicit version
 #
 # Requires:
 #   - gh CLI, authenticated against this repo's remote.
@@ -24,13 +26,6 @@
 # fetches and verifies the new zip.
 set -euo pipefail
 
-if [[ $# -lt 1 ]]; then
-    echo "Usage: $0 <version>   e.g. $0 0.0.2" >&2
-    exit 1
-fi
-
-VERSION="$1"
-TAG="v${VERSION}"
 APP_NAME="BrowserPick"
 APP_BUNDLE=".build/${APP_NAME}.app"
 ZIP_PATH=".build/${APP_NAME}.zip"
@@ -41,6 +36,19 @@ PLIST_BUDDY="/usr/libexec/PlistBuddy"
 
 command -v gh >/dev/null || { echo "gh CLI not found. brew install gh && gh auth login" >&2; exit 1; }
 [[ -x "${PLIST_BUDDY}" ]] || { echo "PlistBuddy not found at ${PLIST_BUDDY}" >&2; exit 1; }
+
+if [[ $# -ge 1 ]]; then
+    VERSION="$1"
+else
+    CURRENT="$("${PLIST_BUDDY}" -c "Print :CFBundleShortVersionString" "${INFO_PLIST}")"
+    if [[ ! "${CURRENT}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+        echo "Cannot auto-bump: current version '${CURRENT}' is not X.Y.Z. Pass an explicit version." >&2
+        exit 1
+    fi
+    VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((BASH_REMATCH[3] + 1))"
+    echo "==> Auto-bumping ${CURRENT} → ${VERSION}"
+fi
+TAG="v${VERSION}"
 
 if [[ ! -f "${CASK_FILE}" ]]; then
     echo "Cask not found at ${CASK_FILE}." >&2

@@ -161,10 +161,16 @@ git clone https://github.com/cvladan/homebrew-tap ~/dev/homebrew-tap
 
 ### Cutting a release
 
-One command, with the version you want to ship:
+For a routine patch release, run without an argument — the script reads the current version from `Info.plist` and bumps the patch component by one (e.g. `0.0.3` → `0.0.4`):
 
 ```sh
-./release.sh 0.0.2
+./release.sh
+```
+
+For a minor or major bump, pass the version explicitly:
+
+```sh
+./release.sh 0.1.0
 ```
 
 That script:
