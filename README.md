@@ -18,14 +18,6 @@ Minimum viable scope:
 - "Open last used" and "Always ask" modes.
 - Launch at login.
 
-Nice-to-haves (later):
-
-- Rules: open certain domains/paths in a specific browser automatically.
-- Profile-aware Chrome/Arc/Edge (route to specific profile).
-- Copy URL / edit URL before opening.
-- Incognito/private mode toggle per browser.
-- Hold a modifier key on click to bypass the chooser.
-
 ## Tech
 
 - **Language:** Swift 5.9+
