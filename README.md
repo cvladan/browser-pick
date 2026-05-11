@@ -94,20 +94,63 @@ Sources/BrowserPick/
 Resources/Info.plist                        URL types, LSUIElement
 build.sh                                    SPM build → .app assembly
 install.sh                                  build → copy to /Applications → launch
+release.sh                                  build → zip → GitHub Release + cask bump
 browserpick.rb                              Homebrew cask
 ```
 
 ## Release
 
-No tap, no App Store, no notarization for now. The cask file lives in this repo at `browserpick.rb` and is installed directly by URL.
+No tap, no App Store, no notarization for now. The cask file (`browserpick.rb`) lives in this repo and is installed directly by URL. The actual `.app` bundle is **not** committed to git — it's attached as a binary asset to a GitHub Release, and the cask points brew at that URL. The repo holds source + the recipe; the binaries live on the Releases page.
 
-**Steps for each release:**
+### One-time setup
 
-1. `./build.sh release`
-2. Zip the app: `ditto -c -k --keepParent .build/BrowserPick.app BrowserPick.zip`
-3. Get the SHA256: `shasum -a 256 BrowserPick.zip`
-4. Create a GitHub Release `vX.Y.Z` and upload the zip.
-5. Update `browserpick.rb` with new `version` and `sha256`, commit, push.
+Install and authenticate the [GitHub CLI](https://cli.github.com) (only needed once per machine):
+
+```sh
+brew install gh
+gh auth login
+```
+
+### Cutting a release
+
+One command, with the version you want to ship:
+
+```sh
+./release.sh 0.0.2
+```
+
+That script:
+
+1. Refuses to run if the working tree is dirty or the tag already exists.
+2. Builds `.build/BrowserPick.app` (release config, ad-hoc signed).
+3. Zips it to `.build/BrowserPick.zip` with `ditto` (preserves macOS metadata).
+4. Computes the SHA256 of the zip.
+5. Rewrites `browserpick.rb` with the new `version` and `sha256`.
+6. Tags `v0.0.2` locally and pushes the tag to `origin`.
+7. Creates a GitHub Release `v0.0.2` and uploads the zip as a release asset.
+8. Commits the cask bump and pushes `main`.
+
+After it finishes, anyone in the world can install with the `brew install --cask` command in the [Install](#install) section. The cask points at `main`, so the latest pushed cask is always what installs.
+
+### First release
+
+The repo currently ships as `0.0.1` with a placeholder SHA. The first real release just runs the script:
+
+```sh
+./release.sh 0.0.1
+```
+
+(Use `0.0.2` if you want to skip and start fresh.) From the second release onward there is nothing different — just bump the version arg.
+
+### If something goes wrong mid-release
+
+The script does destructive things in this order: zip → edit cask → tag → push tag → create release → commit → push. If it dies partway, check what's already done:
+
+- `git tag -d v0.0.2 && git push origin :refs/tags/v0.0.2` — delete a tag locally and on the remote.
+- `gh release delete v0.0.2` — delete the Release if it was created.
+- `git restore browserpick.rb` — undo the cask rewrite if the commit hasn't happened yet.
+
+Then fix the underlying issue and re-run.
 
 ## Install
 
