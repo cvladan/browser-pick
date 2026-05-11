@@ -32,6 +32,7 @@ To build and test: `./build.sh && open .build/BrowserPick.app`. The user's machi
 Sources/BrowserPick/
 ├── main.swift                              ~5 LOC entry point
 ├── AppDelegate.swift                       menubar + URL events
+├── DefaultBrowserManager.swift             read/set system default http(s) handler
 ├── LaunchAtLogin.swift                     SMAppService wrapper
 ├── Models/{Browser,BrowserStore}.swift
 ├── Views/{Settings,Chooser}View.swift
@@ -76,7 +77,8 @@ build.sh
 ## Distribution
 
 - GitHub Releases for the zipped `.app`.
-- Cask file `browserpick.rb` lives in repo root. Install via direct URL — no tap.
+- Homebrew cask lives in a separate tap repo: `cvladan/homebrew-tap`, at `Casks/browserpick.rb`. The cask is **not** in this repo.
+- `release.sh` automates the full release: bump `Info.plist` version, build, zip, tag, push, create GitHub Release, then rewrite + commit + push the cask in the tap repo. The tap is expected at `~/dev/homebrew-tap` (override with `TAP_DIR`). Read the script before changing release flow; the README "Cutting a release" section documents the user-facing contract.
 - No notarization yet. Users can `xattr -dr com.apple.quarantine` if Gatekeeper complains.
 
 ## What NOT to add
