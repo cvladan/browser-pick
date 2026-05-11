@@ -10,12 +10,13 @@ Inspired by [Velja](https://sindresorhus.com/velja) and [Choosy](https://choosy.
 
 Minimum viable scope:
 
-- Menubar icon — no dock icon. Icon shows the app is running; menu has two items: **Launch at Login** toggle and **Quit**.
+- Menubar icon — no dock icon. Icon indicates the app is running. Clicking it opens **Settings**. Right-click (or menu) has two items: **Settings** and **Quit**.
 - Registers as the system handler for `http` and `https`.
 - Chooser popup on every intercepted URL — keyboard-driven (number keys / arrows + return).
-- Settings window to add/remove browsers manually (any `.app` that can open URLs).
-- Per-browser custom name, icon, and keyboard shortcut.
-- "Open last used" and "Always ask" modes.
+- Settings window:
+  - Manage browser list — add/remove any `.app` that can open URLs.
+  - Per-browser custom name, icon, and keyboard shortcut.
+  - Launch at Login toggle.
 
 ## Tech
 
@@ -23,7 +24,7 @@ Minimum viable scope:
 - **UI:** SwiftUI for settings/chooser, AppKit (`NSStatusItem`) for the menubar.
 - **Build:** Xcode project, signed locally for dev.
 - **Min macOS:** 15 Sequoia.
-- **Distribution:** GitHub Releases + Homebrew Cask.
+- **Distribution:** GitHub Releases + standalone Homebrew Cask file (no tap, direct URL install).
 
 ### Why these choices
 
@@ -45,37 +46,20 @@ Hit Run. That's it for now.
 
 ## Release
 
-Releases are distributed via a personal Homebrew tap — no App Store, no notarization required initially.
+No tap, no App Store, no notarization for now. The cask file lives in this repo at `browserpick.rb` and is installed directly by URL.
 
 **Steps for each release:**
 
 1. Build a Release archive in Xcode → export the `.app`.
 2. Zip it: `ditto -c -k --keepParent BrowserPick.app BrowserPick.zip`
-3. Create a GitHub Release and upload the zip. Note the SHA256: `shasum -a 256 BrowserPick.zip`
-4. Update the cask in `homebrew-tap/Casks/browserpick.rb` with the new version, URL, and SHA256.
+3. Get the SHA256: `shasum -a 256 BrowserPick.zip`
+4. Create a GitHub Release `vX.Y.Z` and upload the zip.
+5. Update `browserpick.rb` with new `version` and `sha256`, commit, push.
 
-**Homebrew tap setup** (one-time, in a separate repo `cvladan/homebrew-tap`):
-
-```ruby
-# Casks/browserpick.rb
-cask "browserpick" do
-  version "0.1.0"
-  sha256 "..."
-
-  url "https://github.com/cvladan/browser-pick/releases/download/v#{version}/BrowserPick.zip"
-  name "BrowserPick"
-  desc "Pick which browser opens a link"
-  homepage "https://github.com/cvladan/browser-pick"
-
-  app "BrowserPick.app"
-end
-```
-
-**Install:**
+## Install
 
 ```sh
-brew tap cvladan/tap
-brew install --cask browserpick
+brew install --cask https://raw.githubusercontent.com/cvladan/browser-pick/main/browserpick.rb
 ```
 
 If Gatekeeper complains after install:
@@ -85,6 +69,8 @@ xattr -dr com.apple.quarantine /Applications/BrowserPick.app
 ```
 
 Then set BrowserPick as default browser in System Settings → Desktop & Dock → Default web browser.
+
+> **Note:** direct-URL casks don't auto-update via `brew upgrade`. To update, re-run the install command. A proper tap can come later if it matters.
 
 ## Status
 
