@@ -171,19 +171,21 @@ That script:
 
 1. Refuses to run if either working tree (this repo or the tap) is dirty, or if the tag already exists.
 2. Pulls the tap to make sure it's up to date with origin.
-3. Builds `.build/BrowserPick.app` (release config, ad-hoc signed).
-4. Zips it to `.build/BrowserPick.zip` with `ditto` (preserves macOS metadata).
-5. Computes the SHA256 of the zip.
-6. Tags `v0.0.2` in this repo and pushes the tag to `origin`.
-7. Creates a GitHub Release `v0.0.2` here and uploads the zip as a release asset.
-8. Rewrites `Casks/browserpick.rb` in the tap repo with the new `version` and `sha256`, commits (`browserpick 0.0.2`), and pushes the tap's `main`.
+3. Bumps `CFBundleShortVersionString` and `CFBundleVersion` in `Resources/Info.plist` via PlistBuddy, and commits the bump as `Release v0.0.2`. This is what the About panel reads — without this step every release would still show the old version.
+4. Builds `.build/BrowserPick.app` (release config, ad-hoc signed).
+5. Zips it to `.build/BrowserPick.zip` with `ditto` (preserves macOS metadata).
+6. Computes the SHA256 of the zip.
+7. Tags `v0.0.2` in this repo and pushes both `main` and the tag to `origin`.
+8. Creates a GitHub Release `v0.0.2` here and uploads the zip as a release asset.
+9. Rewrites `Casks/browserpick.rb` in the tap repo with the new `version` and `sha256`, commits (`browserpick 0.0.2`), and pushes the tap's `main`.
 
 After it finishes, anyone in the world can `brew install --cask cvladan/tap/browserpick` (or `brew upgrade --cask browserpick`) and pick up the new build. Brew refreshes tap state with `brew update`, which usually runs implicitly.
 
 ### If something goes wrong mid-release
 
-The script does effectful things in this order: build → zip → tag → push tag → create release → edit tap cask → commit tap → push tap. If it dies partway, undo only what already happened:
+The script does effectful things in this order: bump Info.plist → commit → build → zip → tag → push main+tag → create release → edit tap cask → commit tap → push tap. If it dies partway, undo only what already happened:
 
+- `git reset --hard HEAD~1` in this repo — undo the version-bump commit if it was made but nothing's been pushed yet.
 - `git tag -d v0.0.2 && git push origin :refs/tags/v0.0.2` — delete a tag locally and on the remote.
 - `gh release delete v0.0.2` — delete the Release if it was created.
 - `cd ~/dev/homebrew-tap && git restore Casks/browserpick.rb` — undo the cask rewrite if the tap commit hasn't happened yet. If it has, `git reset --hard HEAD~1` (and force-push if you already pushed — only safe if no one else uses the tap).
