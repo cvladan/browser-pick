@@ -21,9 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let url = URL(string: "https://github.com/cvladan.png?size=256") else { return }
         URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
             guard let data, let image = NSImage(data: data) else { return }
-            let rounded = Self.roundedWithWhiteBorder(image, size: 256, borderWidth: 6)
             Task { @MainActor in
-                self?.aboutIcon = rounded
+                self?.aboutIcon = Self.roundedWithWhiteBorder(image, size: 256, borderWidth: 6)
             }
         }.resume()
     }
