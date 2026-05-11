@@ -10,6 +10,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
         registerForURLEvents()
+        claimDefaultBrowserIfNeeded()
+    }
+
+    /// On every launch, if we are not the default http(s) handler, trigger the
+    /// system prompt to make us default. macOS shows its own confirmation
+    /// dialog — there's no API to bypass it. If already default, this is a no-op.
+    private func claimDefaultBrowserIfNeeded() {
+        guard !DefaultBrowserManager.isDefault else { return }
+        // Slight delay so the menubar icon paints first.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            NSApp.activate(ignoringOtherApps: true)
+            DefaultBrowserManager.setAsDefault { _ in }
+        }
     }
 
     // MARK: - Status item

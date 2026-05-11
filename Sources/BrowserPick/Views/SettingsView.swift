@@ -5,9 +5,15 @@ struct SettingsView: View {
     @Bindable var store: BrowserStore
     @State private var selection: Browser.ID?
     @State private var launchAtLogin: Bool = LaunchAtLogin.isEnabled
+    @State private var isDefault: Bool = DefaultBrowserManager.isDefault
+    @State private var defaultErrorMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            defaultBrowserSection
+
+            Divider()
+
             Text("Browsers")
                 .font(.headline)
 
@@ -45,6 +51,41 @@ struct SettingsView: View {
         }
         .padding(20)
         .frame(minWidth: 520, minHeight: 420)
+    }
+
+    private var defaultBrowserSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: isDefault ? "checkmark.circle.fill" : "exclamationmark.circle")
+                    .foregroundStyle(isDefault ? .green : .orange)
+                if isDefault {
+                    Text("BrowserPick is your default browser.")
+                } else {
+                    Text("BrowserPick is **not** your default browser.")
+                }
+                Spacer()
+                if !isDefault {
+                    Button("Set as Default") {
+                        setAsDefault()
+                    }
+                }
+            }
+            if let message = defaultErrorMessage {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
+    private func setAsDefault() {
+        defaultErrorMessage = nil
+        DefaultBrowserManager.setAsDefault { error in
+            if let error {
+                defaultErrorMessage = "Failed: \(error.localizedDescription)"
+            }
+            isDefault = DefaultBrowserManager.isDefault
+        }
     }
 
     private var browserList: some View {

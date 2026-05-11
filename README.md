@@ -46,22 +46,31 @@ Registered in `Info.plist` via `CFBundleURLTypes` for `http` and `https`. Runtim
 
 Nothing else needed. No Xcode, no Homebrew, no extra package managers.
 
-## Build
+## Build & run
+
+For development, use `install.sh`. It builds, copies the app to `/Applications`, registers it with Launch Services, and launches it:
 
 ```sh
-./build.sh           # debug build
-./build.sh release   # release build
+./install.sh           # debug
+./install.sh release   # release
 ```
 
-This produces `.build/BrowserPick.app`, ad-hoc signed. To run:
+**Why install to `/Applications`?** macOS only considers apps in Launch-Services-indexed locations (mainly `/Applications`) as candidates for the default browser. Running from `.build/` works for basic UI testing but the system won't let you set it as default and link interception won't work reliably.
+
+On first launch, BrowserPick automatically asks macOS to make it the default browser — you'll see the system confirmation dialog ("Do you want to use 'BrowserPick' to open web pages?"). Click **Use 'BrowserPick'**.
+
+The menubar icon (branch arrow) appears in the top right. Left-click → Settings. Right-click → Settings/Quit menu.
+
+### Build only (without install)
+
+If you just want to compile and inspect the bundle:
 
 ```sh
-open .build/BrowserPick.app
+./build.sh           # debug
+./build.sh release   # release
 ```
 
-The menubar icon (branch arrow) appears top right. Left-click → Settings. Right-click → Settings/Quit menu.
-
-To make it your default browser: first launch it once so macOS registers it, then go to System Settings → Desktop & Dock → Default web browser → BrowserPick.
+Output: `.build/BrowserPick.app`, ad-hoc signed.
 
 ## Project layout
 
@@ -82,6 +91,7 @@ Sources/BrowserPick/
 
 Resources/Info.plist                        URL types, LSUIElement
 build.sh                                    SPM build → .app assembly
+install.sh                                  build → copy to /Applications → launch
 browserpick.rb                              Homebrew cask
 ```
 
