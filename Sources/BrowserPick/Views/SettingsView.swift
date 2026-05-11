@@ -50,7 +50,7 @@ struct SettingsView: View {
                 }
         }
         .padding(20)
-        .frame(minWidth: 520, minHeight: 420)
+        .frame(minWidth: 520, minHeight: 520)
     }
 
     private var defaultBrowserSection: some View {
@@ -97,23 +97,19 @@ struct SettingsView: View {
             }
             .width(28)
 
-            TableColumn("Name") { browser in
+            TableColumn("") { browser in
                 TextField("", text: nameBinding(for: browser))
+                    .background(ToolTip(browser.bundleIdentifier))
             }
 
             TableColumn("Shortcut") { browser in
                 TextField("", text: shortcutBinding(for: browser))
                     .frame(width: 60)
+                    .background(ToolTip("Single key. Pressing this letter in the chooser opens this browser. Leave blank to disable."))
             }
             .width(80)
-
-            TableColumn("Bundle ID") { browser in
-                Text(browser.bundleIdentifier)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
-        .frame(minHeight: 280)
+        .frame(minHeight: 240)
     }
 
     private func nameBinding(for browser: Browser) -> Binding<String> {
@@ -160,5 +156,26 @@ struct SettingsView: View {
             bundleURL: url,
             shortcut: nil
         ))
+    }
+}
+
+// `.help()` is unreliable on TextFields inside Table cells — SwiftUI doesn't
+// propagate the tooltip to the underlying NSTextField. Setting NSView.toolTip
+// directly via a background NSView is the only reliable approach.
+private struct ToolTip: NSViewRepresentable {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let v = NSView()
+        v.toolTip = text
+        return v
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        nsView.toolTip = text
     }
 }

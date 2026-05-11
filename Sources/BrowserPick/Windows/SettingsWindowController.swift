@@ -7,7 +7,7 @@ final class SettingsWindowController: NSWindowController {
         let window = NSWindow(contentViewController: hosting)
         window.title = "BrowserPick Settings"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.setContentSize(NSSize(width: 560, height: 440))
+        window.setContentSize(NSSize(width: 560, height: 560))
         window.center()
         self.init(window: window)
     }
