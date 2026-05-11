@@ -19,7 +19,6 @@ xcuserdata/
 # Swift Package Manager
 .build/
 Packages/
-Package.resolved
 .swiftpm/
 
 # CocoaPods (probably won't use, but just in case)

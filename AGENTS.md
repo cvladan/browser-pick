@@ -1,44 +1,82 @@
 # Agent guide
 
-Notes for AI agents (Claude Code, etc.) working in this repo. Humans can read this too.
+Notes for AI agents working in this repo.
 
-## What this project is
+## What this is
 
-BrowserPick is a macOS menubar app that registers as the default `http(s)` handler and presents a chooser when a link is opened. See `README.md` for product scope.
+BrowserPick — macOS menubar app that registers as default `http(s)` handler and shows a chooser. See `README.md` for product scope.
+
+## Build system
+
+**Not** Xcode project. **Not** XcodeGen. Pure SPM + `build.sh` that assembles a `.app` bundle from the SPM-built executable. This is intentional:
+
+- No `.xcodeproj` noise in the repo
+- Builds with only Command Line Tools, no full Xcode required
+- Trivial to build in CI
+
+To build and test: `./build.sh && open .build/BrowserPick.app`. The user's machine has Swift 6.3.1 via CLT; this is enough.
 
 ## Stack
 
-- Swift + SwiftUI + AppKit (`NSStatusItem`, `NSWorkspace`)
-- Xcode project (not SPM-only — we need an `.app` bundle with Info.plist URL handler registration)
-- macOS 13+
+- Swift 6 (strict concurrency on — most things need `@MainActor`)
+- SwiftUI for views, hosted in AppKit windows via `NSHostingController`
+- AppKit `NSStatusItem` for menubar (clicking icon = Settings; right-click = menu)
+- `@Observable` macro for state, persisted to `UserDefaults` as JSON
+- `SMAppService.mainApp` for Launch at Login
+- `NSAppleEventManager` for runtime URL events (`kAEGetURL`)
+- macOS 15 Sequoia minimum, set in `Package.swift` and `Info.plist`
+
+## Code layout
+
+```
+Sources/BrowserPick/
+├── main.swift                              ~5 LOC entry point
+├── AppDelegate.swift                       menubar + URL events
+├── LaunchAtLogin.swift                     SMAppService wrapper
+├── Models/{Browser,BrowserStore}.swift
+├── Views/{Settings,Chooser}View.swift
+└── Windows/{Settings,Chooser}WindowController.swift
+Resources/Info.plist
+build.sh
+```
+
+`main.swift` sets `NSApplication.activationPolicy = .accessory` — this is what makes the app a menubar-only app (combined with `LSUIElement = true` in Info.plist).
+
+## Swift 6 concurrency notes
+
+- `AppDelegate` is `@MainActor`. Same for `BrowserStore`.
+- SwiftUI views inherit `@MainActor` so no annotation needed there.
+- If you add a worker that runs off the main actor, marshal back via `await MainActor.run` before touching `BrowserStore`.
 
 ## Conventions
 
-- Keep it small. This is a utility, not a platform. If a feature needs more than a few hundred LOC, push back and ask whether it belongs in v1.
-- Native macOS feel. No web views, no Electron, no cross-platform abstractions. Use system fonts, system colors, standard keyboard shortcuts.
+- Keep it small. Push back on scope creep. See "What NOT to add" below.
+- Native macOS feel. No web views, no Electron. System fonts/colors, standard shortcuts.
 - No analytics, no telemetry, no network calls. The app intercepts URLs and hands them off — that's the entire trust surface.
-- Prefer SwiftUI for views; drop to AppKit only where SwiftUI is awkward (menubar item, borderless transient panels, focus stealing).
-- One window's worth of settings. Don't build a preferences pane with five tabs.
+- Prefer SwiftUI for views; drop to AppKit for menubar (`NSStatusItem`), borderless transient panels (`NSPanel`), and other things SwiftUI doesn't give us fine control over.
+- One settings window. Don't build a preferences pane with five tabs.
 
 ## Code style
 
 - Swift API design guidelines. No Hungarian prefixes.
 - File per type unless types are trivially small and tightly coupled.
-- Comments only where the *why* is non-obvious (Gatekeeper quirks, undocumented AppKit behavior, etc.). Don't narrate the code.
+- Comments only where the *why* is non-obvious (Gatekeeper quirks, undocumented AppKit behavior). Don't narrate the code.
 
-## Things to be careful about
+## Gotchas
 
-- **Default browser registration:** changing the system default browser triggers a macOS confirmation dialog the user must click. We can't and shouldn't try to bypass it.
-- **Launch Services cache:** `lsregister` quirks during development. If URL routing stops working, `/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user` usually fixes it. Document any such gotcha in code comments.
-- **Focus stealing:** the chooser popup must take focus immediately and accept keyboard input. This is finicky — test it from a background app (Slack, Mail) clicking a link.
-- **Browser discovery:** list `LSCopyAllHandlersForURLScheme("http")` rather than hardcoding browser bundle IDs, but allow the user to add any `.app` manually.
-- **Code signing / notarization:** dev builds are ad-hoc signed. Notarization is deferred until v1 release. Don't add notarization scripts speculatively.
+- **Default browser registration.** Changing the system default browser triggers a macOS confirmation dialog the user must click. Can't bypass.
+- **Launch Services cache.** During development, URL routing may stop working after rebuilds. Fix: `/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user`.
+- **Focus stealing.** The chooser panel must take focus and accept keyboard input when shown from a background context. We call `NSApp.activate(ignoringOtherApps: true)` before `makeKeyAndOrderFront`. Test from a background app (Slack, Mail) clicking a link.
+- **Browser discovery.** Use `LSCopyAllHandlersForURLScheme("http")`. Exclude our own bundle ID from the discovered list.
+- **Code signing.** `build.sh` does ad-hoc signing (`codesign --sign -`). For Release with notarization, that comes later when we ship a real version.
+- **`NSStatusItem` menu trick.** To get left-click=action and right-click=menu on a `NSStatusItem`, do not set `statusItem.menu`. Instead set a button action, check the event type, and call `performClick` after temporarily setting the menu for the right-click case. Reset menu to nil after, asynchronously.
+- **`SMAppService.mainApp.register()`** requires the app to be in `/Applications` or `~/Applications` (and properly signed for some macOS versions). It will silently fail elsewhere — that's fine for dev; just don't be surprised when toggling Launch at Login from a build in `.build/` doesn't survive a reboot.
 
 ## Distribution
 
-- GitHub Releases for the `.zip` of the `.app`.
-- Homebrew Cask in a separate repo (`homebrew-browserpick` or upstream `homebrew-cask` once stable).
-- No auto-update mechanism in v1 — Homebrew handles upgrades.
+- GitHub Releases for the zipped `.app`.
+- Cask file `browserpick.rb` lives in repo root. Install via direct URL — no tap.
+- No notarization yet. Users can `xattr -dr com.apple.quarantine` if Gatekeeper complains.
 
 ## What NOT to add
 
@@ -47,7 +85,14 @@ BrowserPick is a macOS menubar app that registers as the default `http(s)` handl
 - Sync, accounts, cloud anything.
 - A plugin system.
 - Cross-platform support.
+- Multiple settings tabs.
+- "Open last used" mode — explicitly removed. Always ask.
+- Auto-update mechanism. Homebrew handles upgrades.
+
+## Tested state
+
+Build verified clean on macOS 26.4.1 with Swift 6.3.1 CLT. App launches, registers in menubar, accepts URL events. Visual UI not exhaustively tested — when adding/changing UI flows, build and `open .build/BrowserPick.app` to verify manually.
 
 ## When in doubt
 
-Ask. This is a one-person side project, not a roadmap-driven product. Small, sharp, finished is the goal.
+Ask. Small, sharp, finished is the goal.
