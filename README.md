@@ -8,6 +8,8 @@ Register BrowserPick as your default browser, and every time something tries to 
 
 Inspired by [Velja](https://sindresorhus.com/velja) and [Choosy](https://choosy.app), but minimal, open source, and free.
 
+> **Heads up:** the first launch is blocked by macOS Gatekeeper (the build is ad-hoc signed, not Apple-notarized). You'll see *"BrowserPick.app" was blocked to protect your Mac.* — one click in **System Settings → Privacy & Security → Open Anyway** unblocks it. Full steps in [Install](#install).
+
 ## Features
 
 Minimum viable scope:
@@ -109,13 +111,26 @@ Brew will auto-tap [cvladan/homebrew-tap](https://github.com/cvladan/homebrew-ta
 brew upgrade --cask browserpick
 ```
 
-If Gatekeeper complains after install:
+### First launch — unblock Gatekeeper
+
+The release `.app` is ad-hoc signed, not Apple-notarized, so macOS quarantines it on download and refuses to launch the first time. Expect this — it's a one-time, two-click fix:
+
+1. Brew installs the app to `/Applications/BrowserPick.app` and tries to launch it.
+2. macOS shows: **"BrowserPick.app" was blocked to protect your Mac.** → click **Done**.
+3. Open **System Settings → Privacy & Security**.
+4. Scroll down to the security message: *"BrowserPick.app" was blocked to protect your Mac.* → click **Open Anyway**.
+5. Confirm in the dialog (Touch ID or password).
+6. The app launches and asks to be made the default browser — click **Use 'BrowserPick'**.
+
+After this, BrowserPick launches normally, and `brew upgrade --cask browserpick` won't re-trigger the prompt for the same install path unless the binary identity changes.
+
+CLI shortcut for the same thing (skips the Settings dance):
 
 ```sh
 xattr -dr com.apple.quarantine /Applications/BrowserPick.app
 ```
 
-Then set BrowserPick as default browser in System Settings → Desktop & Dock → Default web browser.
+If you didn't get the default-browser prompt automatically, set it manually in **System Settings → Desktop & Dock → Default web browser**.
 
 ## Release
 
