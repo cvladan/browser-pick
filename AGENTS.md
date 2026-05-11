@@ -65,7 +65,8 @@ build.sh
 ## Gotchas
 
 - **Default browser registration.** Changing the system default browser triggers a macOS confirmation dialog the user must click. Can't bypass.
-- **Launch Services cache.** During development, URL routing may stop working after rebuilds. Fix: `/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user`.
+- **Launch Services cache.** macOS auto-discovers apps in `/Applications` when they're opened — no explicit `lsregister` needed during normal dev (`install.sh` does not run it). Only run `lsregister -f /Applications/BrowserPick.app` manually if you changed `Info.plist` (URL schemes, etc.) and macOS still serves the cached version. Nuclear option if URL routing breaks: `lsregister -kill -r -domain local -domain system -domain user`.
+- **Two separate concepts not to conflate.** (1) *Launch Services registration*: macOS knows the bundle exists and what URL schemes it claims via `CFBundleURLTypes`. Done automatically on first `open`. (2) *Default browser selection*: from all registered http handlers, pick BrowserPick. Done by our `NSWorkspace.setDefaultApplication` call on launch, which always shows a system confirmation dialog (no API to bypass).
 - **Focus stealing.** The chooser panel must take focus and accept keyboard input when shown from a background context. We call `NSApp.activate(ignoringOtherApps: true)` before `makeKeyAndOrderFront`. Test from a background app (Slack, Mail) clicking a link.
 - **Browser discovery.** Use `LSCopyAllHandlersForURLScheme("http")`. Exclude our own bundle ID from the discovered list.
 - **Code signing.** `build.sh` does ad-hoc signing (`codesign --sign -`). For Release with notarization, that comes later when we ship a real version.

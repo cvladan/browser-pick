@@ -16,11 +16,8 @@ echo "==> Installing to /Applications/BrowserPick.app"
 rm -rf /Applications/BrowserPick.app
 cp -R .build/BrowserPick.app /Applications/
 
-echo "==> Registering with Launch Services"
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
-    -f /Applications/BrowserPick.app
-
 echo "==> Launching"
+# `open` triggers Launch Services to discover the bundle; no explicit lsregister needed.
 open /Applications/BrowserPick.app
 
 echo ""
