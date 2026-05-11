@@ -2,6 +2,8 @@
 
 A tiny macOS menubar utility that intercepts links and lets you pick which browser to open them in.
 
+**380 KB on disk · ~53 MB of memory at idle.** Native Swift, no Electron, no web views, no telemetry.
+
 Register BrowserPick as your default browser, and every time something tries to open an `http(s)://` link, you get a quick chooser with all the browsers you've added. Pick one, link opens.
 
 Inspired by [Velja](https://sindresorhus.com/velja) and [Choosy](https://choosy.app), but minimal, open source, and free.
@@ -122,6 +124,12 @@ xattr -dr com.apple.quarantine /Applications/BrowserPick.app
 Then set BrowserPick as default browser in System Settings → Desktop & Dock → Default web browser.
 
 > **Note:** direct-URL casks don't auto-update via `brew upgrade`. To update, re-run the install command. A proper tap can come later if it matters.
+
+## FAQ
+
+**Why do I see a second process called "AutoFill (BrowserPick)" in Activity Monitor?**
+
+That's `com.apple.AutoFillPanel`, a macOS XPC service for password/credit-card autofill UI. macOS automatically attaches it to any app registered as a browser (i.e. any app with `http`/`https` in `CFBundleURLTypes`) — you'll see the same helper next to Safari, Chrome, Arc, Velja, etc. BrowserPick does not start it and never invokes it (we have no web views or form input). It's a system-managed helper and costs ~12 MB. There's no way to opt out without giving up the http handler registration that makes the whole app work.
 
 ## Status
 
