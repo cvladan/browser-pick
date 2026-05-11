@@ -108,8 +108,11 @@ brew install --cask cvladan/tap/browserpick
 Brew will auto-tap [cvladan/homebrew-tap](https://github.com/cvladan/homebrew-tap) on first install. To update later:
 
 ```sh
+brew update
 brew upgrade --cask browserpick
 ```
+
+`brew update` is required — Homebrew caches the tap locally and won't see a new cask version until you refresh it. Without `brew update`, `brew upgrade` will report "already installed" even when a newer release exists.
 
 ### First launch — unblock Gatekeeper
 
