@@ -7,50 +7,55 @@ struct ChooserView: View {
     let onPick: (Browser) -> Void
     let onCancel: () -> Void
 
-    @FocusState private var focused: Bool
     @State private var keyMonitor: Any?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
+        VStack(alignment: .leading, spacing: 0) {
+            // URL header
+            HStack(spacing: 8) {
                 Image(systemName: "link")
+                    .foregroundStyle(.secondary)
                 Text(url.absoluteString)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                    .font(.callout)
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
 
             Divider()
 
-            ScrollView {
-                VStack(spacing: 4) {
-                    ForEach(Array(store.browsers.enumerated()), id: \.element.id) { index, browser in
-                        BrowserRow(
-                            browser: browser,
-                            index: index,
-                            onPick: { onPick(browser) }
-                        )
-                    }
+            // Browser rows
+            VStack(spacing: 2) {
+                ForEach(Array(store.browsers.enumerated()), id: \.element.id) { index, browser in
+                    BrowserRow(
+                        browser: browser,
+                        index: index,
+                        onPick: { onPick(browser) }
+                    )
                 }
             }
-            .frame(maxHeight: 320)
+            .padding(6)
 
-            HStack {
-                Text("Press number or shortcut, Esc to cancel")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
+            Divider()
+
+            // Footer hint
+            Text("Press number or shortcut · Esc to cancel")
+                .font(.system(size: 10))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
         }
-        .padding(16)
-        .frame(width: 420)
-        .focusable()
-        .focused($focused)
-        .onAppear {
-            focused = true
-            installKeyMonitor()
-        }
+        .frame(width: 380)
+        .background(.regularMaterial, in: .rect(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(.quaternary, lineWidth: 0.5)
+        )
+        .focusEffectDisabled()
+        .pointerStyle(.default)
+        .onAppear { installKeyMonitor() }
         .onDisappear { removeKeyMonitor() }
     }
 
@@ -94,35 +99,41 @@ private struct BrowserRow: View {
     let index: Int
     let onPick: () -> Void
 
+    @State private var hovering = false
+
     var body: some View {
-        Button(action: onPick) {
-            HStack(spacing: 10) {
-                Text(indexLabel)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(width: 22, alignment: .center)
+        HStack(spacing: 12) {
+            Text(indexLabel)
+                .font(.system(size: 13, design: .monospaced))
+                .frame(width: 18, alignment: .center)
+                .foregroundStyle(.tertiary)
+
+            Image(nsImage: browser.icon())
+                .resizable()
+                .frame(width: 22, height: 22)
+
+            Text(browser.name)
+                .font(.system(size: 13))
+
+            Spacer()
+
+            if let shortcut = browser.shortcut {
+                Text(shortcut.uppercased())
+                    .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(.secondary)
-
-                Image(nsImage: browser.icon())
-                    .resizable()
-                    .frame(width: 24, height: 24)
-
-                Text(browser.name)
-
-                Spacer()
-
-                if let shortcut = browser.shortcut {
-                    Text(shortcut.uppercased())
-                        .font(.system(.caption, design: .monospaced))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.quaternary, in: .rect(cornerRadius: 4))
-                }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(.quaternary, in: .rect(cornerRadius: 4))
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(hovering ? Color.accentColor.opacity(0.15) : Color.clear, in: .rect(cornerRadius: 6))
+        .contentShape(.rect)
+        .onHover { hovering = $0 }
+        .onTapGesture { onPick() }
+        .pointerStyle(.link)
     }
 
     private var indexLabel: String {
