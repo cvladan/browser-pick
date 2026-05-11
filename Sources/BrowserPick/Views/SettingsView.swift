@@ -99,7 +99,7 @@ struct SettingsView: View {
 
             TableColumn("") { browser in
                 TextField("", text: nameBinding(for: browser))
-                    .background(ToolTip(browser.bundleIdentifier))
+                    .background(ToolTip("Double-click to rename.\nBundle ID: \(browser.bundleIdentifier)"))
             }
 
             TableColumn("Shortcut") { browser in
