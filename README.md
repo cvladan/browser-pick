@@ -28,13 +28,13 @@ Minimum viable scope:
 - **Launch at Login:** `SMAppService.mainApp`.
 - **Build system:** Swift Package Manager + shell script that assembles a `.app` bundle. No Xcode required — just Command Line Tools.
 - **Min macOS:** 15 Sequoia.
-- **Distribution:** GitHub Releases + standalone Homebrew Cask file (no tap, direct URL install).
+- **Distribution:** GitHub Releases + Homebrew tap at [cvladan/homebrew-tap](https://github.com/cvladan/homebrew-tap).
 
 ### Why these choices
 
 - Swift 6 + SwiftUI hosted in AppKit: native, no runtime, smallest binary, best Gatekeeper story. AppKit for menubar gives us proper left-click vs right-click behavior that SwiftUI's `MenuBarExtra` can't.
 - SPM over Xcode project: no `.xcodeproj` noise in the repo, builds from CLT, builds in CI without installing Xcode.
-- Homebrew Cask: zero-friction install for devs. Skips notarization pain initially — users can `xattr -dr com.apple.quarantine` if needed.
+- Homebrew tap: zero-friction install for devs, plus `brew upgrade` works. Skips notarization pain initially — users can `xattr -dr com.apple.quarantine` if needed.
 
 ## URL handling
 
@@ -94,13 +94,38 @@ Sources/BrowserPick/
 Resources/Info.plist                        URL types, LSUIElement
 build.sh                                    SPM build → .app assembly
 install.sh                                  build → copy to /Applications → launch
-release.sh                                  build → zip → GitHub Release + cask bump
-browserpick.rb                              Homebrew cask
+release.sh                                  build → zip → GitHub Release + tap bump
 ```
+
+## Install
+
+```sh
+brew install --cask cvladan/tap/browserpick
+```
+
+Brew will auto-tap [cvladan/homebrew-tap](https://github.com/cvladan/homebrew-tap) on first install. To update later:
+
+```sh
+brew upgrade --cask browserpick
+```
+
+If Gatekeeper complains after install:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/BrowserPick.app
+```
+
+Then set BrowserPick as default browser in System Settings → Desktop & Dock → Default web browser.
 
 ## Release
 
-No tap, no App Store, no notarization for now. The cask file (`browserpick.rb`) lives in this repo and is installed directly by URL. The actual `.app` bundle is **not** committed to git — it's attached as a binary asset to a GitHub Release, and the cask points brew at that URL. The repo holds source + the recipe; the binaries live on the Releases page.
+No App Store, no notarization for now. Distribution has two pieces:
+
+- **Source + release script** live in this repo.
+- **Cask recipe** lives in a separate Homebrew tap repo: [cvladan/homebrew-tap](https://github.com/cvladan/homebrew-tap), at `Casks/browserpick.rb`.
+- **The `.app` bundle** is **not** committed anywhere — it's attached as a binary asset to a GitHub Release in this repo, and the cask points brew at that URL.
+
+The split is required because Homebrew taps must be in repos named `homebrew-*` and follow a specific layout. Keeping the recipe in its own repo also means `brew upgrade` works (you can't upgrade direct-URL cask installs).
 
 ### One-time setup
 
@@ -110,6 +135,14 @@ Install and authenticate the [GitHub CLI](https://cli.github.com) (only needed o
 brew install gh
 gh auth login
 ```
+
+Clone the tap next to this repo so `release.sh` can write to it:
+
+```sh
+git clone https://github.com/cvladan/homebrew-tap ~/dev/homebrew-tap
+```
+
+`release.sh` looks for the tap at `~/dev/homebrew-tap`. Override with `TAP_DIR=/path/to/homebrew-tap ./release.sh ...` if you cloned it elsewhere.
 
 ### Cutting a release
 
@@ -121,52 +154,26 @@ One command, with the version you want to ship:
 
 That script:
 
-1. Refuses to run if the working tree is dirty or the tag already exists.
-2. Builds `.build/BrowserPick.app` (release config, ad-hoc signed).
-3. Zips it to `.build/BrowserPick.zip` with `ditto` (preserves macOS metadata).
-4. Computes the SHA256 of the zip.
-5. Rewrites `browserpick.rb` with the new `version` and `sha256`.
-6. Tags `v0.0.2` locally and pushes the tag to `origin`.
-7. Creates a GitHub Release `v0.0.2` and uploads the zip as a release asset.
-8. Commits the cask bump and pushes `main`.
+1. Refuses to run if either working tree (this repo or the tap) is dirty, or if the tag already exists.
+2. Pulls the tap to make sure it's up to date with origin.
+3. Builds `.build/BrowserPick.app` (release config, ad-hoc signed).
+4. Zips it to `.build/BrowserPick.zip` with `ditto` (preserves macOS metadata).
+5. Computes the SHA256 of the zip.
+6. Tags `v0.0.2` in this repo and pushes the tag to `origin`.
+7. Creates a GitHub Release `v0.0.2` here and uploads the zip as a release asset.
+8. Rewrites `Casks/browserpick.rb` in the tap repo with the new `version` and `sha256`, commits (`browserpick 0.0.2`), and pushes the tap's `main`.
 
-After it finishes, anyone in the world can install with the `brew install --cask` command in the [Install](#install) section. The cask points at `main`, so the latest pushed cask is always what installs.
-
-### First release
-
-The repo currently ships as `0.0.1` with a placeholder SHA. The first real release just runs the script:
-
-```sh
-./release.sh 0.0.1
-```
-
-(Use `0.0.2` if you want to skip and start fresh.) From the second release onward there is nothing different — just bump the version arg.
+After it finishes, anyone in the world can `brew install --cask cvladan/tap/browserpick` (or `brew upgrade --cask browserpick`) and pick up the new build. Brew refreshes tap state with `brew update`, which usually runs implicitly.
 
 ### If something goes wrong mid-release
 
-The script does destructive things in this order: zip → edit cask → tag → push tag → create release → commit → push. If it dies partway, check what's already done:
+The script does effectful things in this order: build → zip → tag → push tag → create release → edit tap cask → commit tap → push tap. If it dies partway, undo only what already happened:
 
 - `git tag -d v0.0.2 && git push origin :refs/tags/v0.0.2` — delete a tag locally and on the remote.
 - `gh release delete v0.0.2` — delete the Release if it was created.
-- `git restore browserpick.rb` — undo the cask rewrite if the commit hasn't happened yet.
+- `cd ~/dev/homebrew-tap && git restore Casks/browserpick.rb` — undo the cask rewrite if the tap commit hasn't happened yet. If it has, `git reset --hard HEAD~1` (and force-push if you already pushed — only safe if no one else uses the tap).
 
 Then fix the underlying issue and re-run.
-
-## Install
-
-```sh
-brew install --cask https://raw.githubusercontent.com/cvladan/browser-pick/main/browserpick.rb
-```
-
-If Gatekeeper complains after install:
-
-```sh
-xattr -dr com.apple.quarantine /Applications/BrowserPick.app
-```
-
-Then set BrowserPick as default browser in System Settings → Desktop & Dock → Default web browser.
-
-> **Note:** direct-URL casks don't auto-update via `brew upgrade`. To update, re-run the install command. A proper tap can come later if it matters.
 
 ## FAQ
 
